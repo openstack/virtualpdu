@@ -17,6 +17,9 @@ from mock import sentinel
 from pysnmp.proto import errind
 from pysnmp.proto.errind import ErrorIndication
 from pysnmp.proto.rfc1905 import NoSuchInstance
+
+import testtools
+
 from virtualpdu.tests import base
 from virtualpdu.tests import snmp_client
 from virtualpdu.tests import snmp_error_indications
@@ -92,8 +95,8 @@ class TestSnmpClient(base.TestCase):
 
             exception_class = snmp_error_indications.__dict__.get(class_name)
 
-            self.assertRaises(exception_class,
-                              self.snmp_client.get_one, oid)
+            with testtools.ExpectedException(exception_class):
+                self.snmp_client.get_one(oid)
 
     def test_set(self):
         oid = (1, 3, 6)

@@ -175,3 +175,15 @@ class SNMPApplicationError(SNMPErrorIndication):
 
 class OidNotIncreasing(SNMPApplicationError):
     pass
+
+
+class ReportPduReceived(SNMPErrorIndication):
+    pass
+
+
+class UnknownUserName(SNMPErrorIndication):
+    pass
+
+
+class WrongDigest(SNMPErrorIndication):
+    pass
