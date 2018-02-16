@@ -121,10 +121,10 @@ class TestSnmpClient(base.TestCase):
     def test_set_no_such_instance(self):
         oid = (1, 3, 6)
         self.command_generator_mock.setCmd.return_value = \
-            (None, 0, 0, [(oid, NoSuchInstance())])
+            (None, 0, 0, [(oid, NoSuchInstance(''))])
         value = self.snmp_client.set(oid, '43 thousands')
 
-        self.assertEqual(NoSuchInstance(), value)
+        self.assertEqual(NoSuchInstance(''), value)
 
         self.oneliner_cmdgen.UdpTransportTarget \
             .assert_called_with((sentinel.hostname, sentinel.port),

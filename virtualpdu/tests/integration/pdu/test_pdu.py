@@ -32,7 +32,7 @@ class TestPDU(PDUTestCase):
                           self.snmp_get, enterprises + (42,))
 
     def test_set_unknown_oid(self):
-        self.assertEqual(NoSuchInstance(),
+        self.assertEqual(NoSuchInstance(''),
                          self.snmp_set(enterprises + (42,), univ.Integer(7)))
 
     def test_get_valid_oid_wrong_community(self):

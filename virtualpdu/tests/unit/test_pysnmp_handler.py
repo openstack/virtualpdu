@@ -108,7 +108,7 @@ class SnmpServiceMessageReceivedTest(unittest.TestCase):
         varbindlist = message[PDUs][ResponsePDU][VarBindList]
         self.assertEqual(varbindlist[0][ObjectName].value, (1, 1))
         self.assertEqual(varbindlist[0][NoSuchInstance].value,
-                         NoSuchInstance())
+                         NoSuchInstance(''))
 
     def test_get(self):
         self.pdu_mock.oid_mapping[(1, 1)] = Mock()
