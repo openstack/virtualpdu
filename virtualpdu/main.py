@@ -34,15 +34,18 @@ def main():
         config_file = sys.argv[1]
     except IndexError:
         sys.stderr.write(MISSING_CONFIG_MESSAGE)
-        sys.exit(1)
+        return 1
     else:
-        config = configparser.RawConfigParser()
+        config = configparser.RawConfigParser({'debug_snmp': 'no'})
         config.read(config_file)
         driver = get_driver_from_config(config)
         mapping = get_mapping_for_config(config)
         outlet_default_state = get_default_state_from_config(config)
+        debug_snmp = config.get('global', 'debug_snmp')
+
         core = virtualpdu.core.Core(driver=driver, mapping=mapping, store={},
                                     default_state=outlet_default_state)
+
         pdu_threads = []
         for pdu in [s for s in config.sections() if s != 'global']:
 
@@ -52,12 +55,15 @@ def main():
 
             apc_pdu = apc_rackpdu.APCRackPDU(pdu, core)
 
-            pdu_threads.append(pysnmp_handler.SNMPPDUHarness(
-                apc_pdu,
-                listen_address,
-                port,
-                community
-            ))
+            pdu_threads.append(
+                pysnmp_handler.SNMPPDUHarness(
+                    apc_pdu,
+                    listen_address,
+                    port,
+                    community,
+                    debug_snmp=debug_snmp in ('yes', 'true', '1')
+                )
+            )
 
         for t in pdu_threads:
             t.start()
@@ -66,10 +72,13 @@ def main():
             for t in pdu_threads:
                 while t.isAlive():
                     t.join(1)
+
         except KeyboardInterrupt:
             for t in pdu_threads:
                 t.stop()
-            sys.exit()
+            return 1
+
+        return 0
 
 
 def parse_default_state_config(default_state):
@@ -120,3 +129,7 @@ def get_default_state_from_config(conf):
 
 class UnableToParseConfig(Exception):
     pass
+
+
+if __name__ == '__main__':
+    sys.exit(main())

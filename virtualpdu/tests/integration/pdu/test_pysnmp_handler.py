@@ -26,9 +26,10 @@ class TestSNMPPDUHarness(base.TestCase):
 
     def test_harness_get(self):
 
-        mock_pdu = mock.Mock()
+        mock_power_unit = mock.Mock()
         port = randint(20000, 30000)
-        harness = pysnmp_handler.SNMPPDUHarness(pdu=mock_pdu,
+
+        harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
                                                 community='bleh')
@@ -42,9 +43,9 @@ class TestSNMPPDUHarness(base.TestCase):
                                         timeout=1,
                                         retries=1)
 
-        mock_pdu.oid_mapping = dict()
-        mock_pdu.oid_mapping[(1, 3, 6, 99)] = mock.Mock()
-        mock_pdu.oid_mapping[(1, 3, 6, 99)].value = univ.Integer(42)
+        mock_power_unit.oid_mapping = dict()
+        mock_power_unit.oid_mapping[(1, 3, 6, 99)] = mock.Mock()
+        mock_power_unit.oid_mapping[(1, 3, 6, 99)].value = univ.Integer(42)
 
         self.assertEqual(42, client.get_one((1, 3, 6, 99)))
 
@@ -52,9 +53,9 @@ class TestSNMPPDUHarness(base.TestCase):
 
     def test_harness_set(self):
 
-        mock_pdu = mock.Mock()
+        mock_power_unit = mock.Mock()
         port = randint(20000, 30000)
-        harness = pysnmp_handler.SNMPPDUHarness(pdu=mock_pdu,
+        harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
                                                 community='bleh')
@@ -68,20 +69,20 @@ class TestSNMPPDUHarness(base.TestCase):
                                         timeout=1,
                                         retries=1)
 
-        mock_pdu.oid_mapping = dict()
-        mock_pdu.oid_mapping[(1, 3, 6, 98)] = mock.Mock()
+        mock_power_unit.oid_mapping = dict()
+        mock_power_unit.oid_mapping[(1, 3, 6, 98)] = mock.Mock()
 
         client.set((1, 3, 6, 98), univ.Integer(99))
 
         self.assertEqual(univ.Integer(99),
-                         mock_pdu.oid_mapping[(1, 3, 6, 98)].value)
+                         mock_power_unit.oid_mapping[(1, 3, 6, 98)].value)
 
         harness.stop()
 
     def test_harness_get_next(self):
-        mock_pdu = mock.Mock()
+        mock_power_unit = mock.Mock()
         port = randint(20000, 30000)
-        harness = pysnmp_handler.SNMPPDUHarness(pdu=mock_pdu,
+        harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
                                                 community='bleh')
@@ -95,9 +96,9 @@ class TestSNMPPDUHarness(base.TestCase):
                                         timeout=1,
                                         retries=1)
 
-        mock_pdu.oid_mapping = dict()
-        mock_pdu.oid_mapping[(1, 3, 6, 1, 5)] = mock.Mock()
-        mock_pdu.oid_mapping[(1, 3, 6, 1, 5)].value = univ.Integer(42)
+        mock_power_unit.oid_mapping = dict()
+        mock_power_unit.oid_mapping[(1, 3, 6, 1, 5)] = mock.Mock()
+        mock_power_unit.oid_mapping[(1, 3, 6, 1, 5)].value = univ.Integer(42)
 
         oid, val = client.get_next((1, 3, 6, 1))
 
@@ -107,9 +108,9 @@ class TestSNMPPDUHarness(base.TestCase):
         harness.stop()
 
     def test_start_stop_threadsafety(self):
-        mock_pdu = mock.Mock()
+        mock_power_unit = mock.Mock()
         port = randint(20000, 30000)
-        harness = pysnmp_handler.SNMPPDUHarness(pdu=mock_pdu,
+        harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
                                                 community='bleh')

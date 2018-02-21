@@ -15,117 +15,151 @@
 import logging
 import threading
 
-from pyasn1.codec.ber import decoder
-from pyasn1.codec.ber import encoder
-from pysnmp.carrier.asyncore.dgram import udp
-from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
-from pysnmp.proto import api
+from pysnmp.carrier.asynsock.dgram import udp
+from pysnmp import debug
+from pysnmp.entity import config
+from pysnmp.entity import engine
+from pysnmp.entity.rfc3413 import cmdrsp
+from pysnmp.entity.rfc3413 import context
+from pysnmp.proto.api import v2c
 
-# NOTE(mmitchell): Roughly from implementing-scalar-mib-objects.py in pysnmp.
-# Unfortunately, that file is not part of the pysnmp package and re-use is
-# not possible.
 # pysnmp is distributed under the BSD license.
 
 from virtualpdu.pdu import TraversableOidMapping
 
 
-class SNMPPDUHandler(object):
-    def __init__(self, pdu, community):
-        self.pdu = pdu
-        self.community = community
-        self.logger = logging.getLogger(__name__)
+class GetCommandResponder(cmdrsp.GetCommandResponder):
 
-    def message_handler(self, transportDispatcher, transportDomain,
-                        transportAddress, whole_message):
-        while whole_message:
-            message_version = api.decodeMessageVersion(whole_message)
-            if message_version in api.protoModules:
-                protocol = api.protoModules[message_version]
-            else:
-                self.logger.warn(
-                    'Unsupported SNMP version "{}"'.format(message_version))
-                return
+    def __init__(self, snmpEngine, snmpContext, power_unit):
+        super(GetCommandResponder, self).__init__(snmpEngine, snmpContext)
+        self.__power_unit = power_unit
 
-            request, whole_message = decoder.decode(
-                whole_message, asn1Spec=protocol.Message()
+    def handleMgmtOperation(self, snmpEngine, stateReference,
+                            contextName, req_pdu, acInfo):
+
+        var_binds = []
+
+        for oid, val in v2c.apiPDU.getVarBinds(req_pdu):
+            var_binds.append(
+                (oid, (self.__power_unit.oid_mapping[oid].value
+                       if oid in self.__power_unit.oid_mapping
+                       else v2c.NoSuchInstance('')))
             )
 
-            response = protocol.apiMessage.getResponse(request)
-            request_pdus = protocol.apiMessage.getPDU(request)
-            community = protocol.apiMessage.getCommunity(request)
+        self.sendRsp(snmpEngine, stateReference, 0, 0, var_binds)
 
-            if not self.valid_community(community):
-                self.logger.warn('Invalid community "{}"'.format(community))
-                return
+        self.releaseStateInformation(stateReference)
 
-            response_pdus = protocol.apiMessage.getPDU(response)
-            var_binds = []
-            pending_errors = []
-            error_index = 0
 
-            if request_pdus.isSameTypeWith(protocol.GetRequestPDU()):
-                for oid, val in protocol.apiPDU.getVarBinds(request_pdus):
-                    if oid in self.pdu.oid_mapping:
-                        var_binds.append(
-                            (oid, self.pdu.oid_mapping[oid].value))
-                    else:
-                        return
-            elif request_pdus.isSameTypeWith(protocol.GetNextRequestPDU()):
-                for oid, val in protocol.apiPDU.getVarBinds(request_pdus):
-                    error_index += 1
-                    try:
-                        oid = TraversableOidMapping(self.pdu.oid_mapping)\
-                            .next(to=oid)
-                        val = self.pdu.oid_mapping[oid].value
-                    except (KeyError, IndexError):
-                        pending_errors.append(
-                            (protocol.apiPDU.setNoSuchInstanceError,
-                             error_index)
+class NextCommandResponder(cmdrsp.NextCommandResponder):
+
+    def __init__(self, snmpEngine, snmpContext, power_unit):
+        super(NextCommandResponder, self).__init__(snmpEngine, snmpContext)
+        self.__power_unit = power_unit
+
+    def handleMgmtOperation(self, snmpEngine, stateReference,
+                            contextName, req_pdu, acInfo):
+
+        oid_map = TraversableOidMapping(self.__power_unit.oid_mapping)
+
+        var_binds = []
+
+        for oid, val in v2c.apiPDU.getVarBinds(req_pdu):
+
+            try:
+                oid = oid_map.next(to=oid)
+                val = self.__power_unit.oid_mapping[oid].value
+
+            except (KeyError, IndexError):
+                val = v2c.NoSuchInstance('')
+
+            var_binds.append((oid, val))
+
+        self.sendRsp(snmpEngine, stateReference, 0, 0, var_binds)
+
+        self.releaseStateInformation(stateReference)
+
+
+class SetCommandResponder(cmdrsp.SetCommandResponder):
+
+    def __init__(self, snmpEngine, snmpContext, power_unit):
+        super(SetCommandResponder, self).__init__(snmpEngine, snmpContext)
+        self.__power_unit = power_unit
+
+        self.__logger = logging.getLogger(__name__)
+
+    def handleMgmtOperation(self, snmpEngine, stateReference,
+                            contextName, req_pdu, acInfo):
+
+        var_binds = []
+
+        for oid, val in v2c.apiPDU.getVarBinds(req_pdu):
+            if oid in self.__power_unit.oid_mapping:
+                try:
+                    self.__power_unit.oid_mapping[oid].value = val
+
+                except Exception as ex:
+                    self.__logger.info(
+                        'Set value {} on power unit {} failed: {}'.format(
+                            val, self.__power_unit.name, ex
                         )
-                    var_binds.append((oid, val))
-            elif request_pdus.isSameTypeWith(protocol.SetRequestPDU()):
-                for oid, val in protocol.apiPDU.getVarBinds(request_pdus):
-                    error_index += 1
-                    if oid in self.pdu.oid_mapping:
-                        self.pdu.oid_mapping[oid].value = val
-                        var_binds.append((oid, val))
-                    else:
-                        var_binds.append((oid, val))
-                        pending_errors.append(
-                            (protocol.apiPDU.setNoSuchInstanceError,
-                             error_index)
-                        )
+                    )
+                    val = v2c.NoSuchInstance('')
             else:
-                protocol.apiPDU.setErrorStatus(response_pdus, 'genErr')
+                val = v2c.NoSuchInstance('')
 
-            protocol.apiPDU.setVarBinds(response_pdus, var_binds)
+            var_binds.append((oid, val))
 
-            # Commit possible error indices to response PDU
-            for f, i in pending_errors:
-                f(response_pdus, i)
+        self.sendRsp(snmpEngine, stateReference, 0, 0, var_binds)
 
-            transportDispatcher.sendMessage(
-                encoder.encode(response), transportDomain, transportAddress
-            )
+        self.releaseStateInformation(stateReference)
 
-        return whole_message
 
-    def valid_community(self, community):
-        return str(community) == self.community
+def create_snmp_engine(power_unit, listen_address, listen_port,
+                       community="public"):
+    snmp_engine = engine.SnmpEngine()
+
+    config.addSocketTransport(
+        snmp_engine,
+        udp.domainName,
+        udp.UdpTransport().openServerMode((listen_address, listen_port))
+    )
+
+    config.addV1System(snmp_engine, community, community)
+
+    # Allow read MIB access for this user / securityModels at SNMP VACM
+    for snmp_version in (1, 2):
+        config.addVacmUser(snmp_engine, snmp_version,
+                           community, 'noAuthNoPriv', (1,), (1,))
+
+    snmp_context = context.SnmpContext(snmp_engine)
+
+    # Register SNMP Apps at the SNMP engine for particular SNMP context
+    GetCommandResponder(snmp_engine, snmp_context, power_unit=power_unit)
+    NextCommandResponder(snmp_engine, snmp_context, power_unit=power_unit)
+    SetCommandResponder(snmp_engine, snmp_context, power_unit=power_unit)
+
+    return snmp_engine
 
 
 class SNMPPDUHarness(threading.Thread):
-    def __init__(self, pdu, listen_address, listen_port, community="public"):
+    def __init__(self, power_unit,
+                 listen_address, listen_port,
+                 community="public",
+                 debug_snmp=False):
         super(SNMPPDUHarness, self).__init__()
-        self.logger = logging.getLogger(__name__)
 
-        self.pdu = pdu
+        self._logger = logging.getLogger(__name__)
 
-        self.snmp_handler = SNMPPDUHandler(self.pdu, community=community)
+        if debug_snmp:
+            debug.setLogger(debug.Debug('all'))
+
+        self.snmp_engine = create_snmp_engine(power_unit, listen_address,
+                                              listen_port, community)
 
         self.listen_address = listen_address
         self.listen_port = listen_port
-        self.transportDispatcher = AsyncoreDispatcher()
+        self.power_unit = power_unit
 
         self._lock = threading.Lock()
         self._stop_requested = False
@@ -135,31 +169,24 @@ class SNMPPDUHarness(threading.Thread):
             if self._stop_requested:
                 return
 
-            self.logger.info("Starting PDU '{}' on {}:{}".format(
-                self.pdu.name, self.listen_address, self.listen_port)
-            )
-            self.transportDispatcher.registerRecvCbFun(
-                self.snmp_handler.message_handler)
+            self._logger.info("Starting SNMP agent at {}:{} serving '{}'"
+                              .format(self.listen_address, self.listen_port,
+                                      self.power_unit.name))
 
-            # UDP/IPv4
-            self.transportDispatcher.registerTransport(
-                udp.domainName,
-                udp.UdpSocketTransport().openServerMode(
-                    (self.listen_address, self.listen_port))
-            )
-
-            self.transportDispatcher.jobStarted(1)
+            self.snmp_engine.transportDispatcher.jobStarted(1)
 
         try:
             # Dispatcher will never finish as job#1 never reaches zero
-            self.transportDispatcher.runDispatcher()
+            self.snmp_engine.transportDispatcher.runDispatcher()
+
         except Exception:
-            self.transportDispatcher.closeDispatcher()
+            self.snmp_engine.transportDispatcher.closeDispatcher()
 
     def stop(self):
         with self._lock:
             self._stop_requested = True
             try:
-                self.transportDispatcher.jobFinished(1)
+                self.snmp_engine.transportDispatcher.jobFinished(1)
+
             except KeyError:
                 pass  # The job is not started yet and will not start

@@ -20,12 +20,14 @@ class TraversableMessage(object):
     def __getitem__(self, type_class):
         ret = None
         try:
-            for component in self.value.values():
+            # this is required for ancient pyasn1 to work
+            for idx in range(len(self.value)):
+                component = self.value.getComponentByPosition(idx)
                 if isinstance(component, type_class):
                     if ret:
                         raise KeyError()
                     ret = component
-        except AttributeError:
+        except (TypeError, AttributeError):
             index = type_class
             ret = self.value[index]
         return TraversableMessage(ret)

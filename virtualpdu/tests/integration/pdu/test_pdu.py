@@ -28,8 +28,8 @@ class TestPDU(PDUTestCase):
     outlet_control_class = pdu.PDUOutletControl
 
     def test_get_unknown_oid(self):
-        self.assertRaises(RequestTimedOut,
-                          self.snmp_get, enterprises + (42,))
+        self.assertEqual(NoSuchInstance(''),
+                         self.snmp_get(enterprises + (42,)))
 
     def test_set_unknown_oid(self):
         self.assertEqual(NoSuchInstance(''),

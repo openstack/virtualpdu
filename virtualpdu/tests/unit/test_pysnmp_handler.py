@@ -16,8 +16,8 @@ import unittest
 
 from mock import Mock
 from mock import patch
-from mock import sentinel
 
+from pysnmp.proto.errind import UnknownPDUHandler
 from pysnmp.proto.rfc1902 import Integer
 from pysnmp.proto.rfc1902 import ObjectName
 from pysnmp.proto.rfc1902 import ObjectSyntax
@@ -26,19 +26,19 @@ from pysnmp.proto.rfc1902 import SimpleSyntax
 
 from pysnmp.proto.rfc1905 import _BindValue
 from pysnmp.proto.rfc1905 import NoSuchInstance
-from pysnmp.proto.rfc1905 import PDUs
-from pysnmp.proto.rfc1905 import ResponsePDU
 from pysnmp.proto.rfc1905 import VarBindList
 
-from virtualpdu.pdu.pysnmp_handler import SNMPPDUHandler
+from virtualpdu.pdu.pysnmp_handler import create_snmp_engine
 from virtualpdu.tests.unit import TraversableMessage
-
-SNMP_ERR_noSuchName = 2
-SNMP_ERR_genErr = 5
 
 # snmpget -v2c -c community localhost:10610 .1.1
 MSG_SNMP_GET = (b'0%\x02\x01\x01\x04\tcommunity\xa0\x15\x02\x04$=W\xfd\x02\x01'
                 b'\x00\x02\x01\x000\x070\x05\x06\x01)\x05\x00')
+
+# snmpget -v2c -c community localhost:10610 .1.0
+MSG_SNMP_GET_UNKNOWN_OID = (b'0%\x02\x01\x01\x04\tcommunity\xa0\x15\x02\x04'
+                            b'$=W\xfd\x02\x01\x00\x02\x01\x000\x070\x05\x06'
+                            b'\x01(\x05\x00')
 
 # snmpset -v2c -c community localhost:10610 .1.1 i 5
 MSG_SNMP_SET = (b'0&\x02\x01\x01\x04\tcommunity\xa3\x16\x02\x04ce\xd84\x02\x01'
@@ -62,103 +62,158 @@ MSG_SNMP_WRONG_COMM = (b'0+\x02\x01\x01\x04\x0fwrong_community\xa0\x15\x02'
 
 class SnmpServiceMessageReceivedTest(unittest.TestCase):
     def setUp(self):
-        self.pdu_mock = Mock()
-        self.pdu_mock.oid_mapping = {}
-        self.transport_dispatcher = Mock()
-        self.pdu_handler = SNMPPDUHandler(self.pdu_mock, 'community')
-        self.encoder_patcher = patch('virtualpdu.pdu.pysnmp_handler.encoder')
-        self.encoder_mock = self.encoder_patcher.start()
-        self.encoder_mock.return_value = sentinel.encoded_message
+        self.power_unit_mock = Mock()
+        self.power_unit_mock.oid_mapping = {}
+
+        for pysnmp_package in ('asyncore', 'asynsock'):
+            try:
+                self.socket_patcher = patch('pysnmp.carrier.%s.dgram'
+                                            '.base.DgramSocketTransport'
+                                            '.openServerMode' % pysnmp_package)
+                self.socket_patcher.start()
+
+                break
+
+            except ImportError:
+                continue
+
+        else:
+            raise ImportError('Monkeys failed at pysnmp patching!')
+
+        self.snmp_engine = create_snmp_engine(self.power_unit_mock,
+                                              '127.0.0.1', 161,
+                                              'community')
 
     def tearDown(self):
-        self.encoder_patcher.stop()
+        self.snmp_engine.transportDispatcher.closeDispatcher()
+        self.socket_patcher.stop()
 
     def test_set_calls_pdu_mock(self):
-        self.pdu_mock.oid_mapping[(1, 1)] = Mock()
+        self.power_unit_mock.oid_mapping[(1, 1)] = Mock()
 
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_SET)
-        self.assertEqual(self.pdu_mock.oid_mapping[(1, 1)].value, 5)
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_SET
+        )
+
+        self.assertEqual(self.power_unit_mock.oid_mapping[(1, 1)].value, 5)
 
     def test_set_response(self):
-        self.pdu_mock.oid_mapping[(1, 1)] = Mock()
+        self.power_unit_mock.oid_mapping[(1, 1)] = Mock()
 
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_SET)
+        patcher = patch('virtualpdu.pdu.pysnmp_handler'
+                        '.SetCommandResponder.handleMgmtOperation')
+        mock = patcher.start()
 
-        message = TraversableMessage(self.encoder_mock.encode.call_args[0][0])
-        varbindlist = message[PDUs][ResponsePDU][VarBindList]
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_SET
+        )
+
+        message = TraversableMessage(mock.call_args[0][3])
+
+        patcher.stop()
+
+        varbindlist = message[VarBindList]
 
         self.assertEqual(varbindlist[0][ObjectName].value, (1, 1))
         self.assertEqual(varbindlist[0][_BindValue][ObjectSyntax]
                          [SimpleSyntax][Integer].value,
                          Integer(5))
 
-    def test_set_with_unknown_oid_replies_nosuchinstance(self):
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_SET)
+    def test_get_with_unknown_oid_replies_nosuchinstance(self):
 
-        message = TraversableMessage(self.encoder_mock.encode.call_args[0][0])
-        varbindlist = message[PDUs][ResponsePDU][VarBindList]
-        self.assertEqual(varbindlist[0][ObjectName].value, (1, 1))
-        self.assertEqual(varbindlist[0][NoSuchInstance].value,
-                         NoSuchInstance(''))
+        patcher = patch('virtualpdu.pdu.pysnmp_handler'
+                        '.GetCommandResponder.sendRsp')
+        mock = patcher.start()
+
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_GET_UNKNOWN_OID
+        )
+
+        varbindlist = mock.call_args[0][4]
+
+        patcher.stop()
+
+        self.assertEqual(varbindlist[0][0], (1, 0))
+        self.assertIsInstance(varbindlist[0][1], NoSuchInstance)
 
     def test_get(self):
-        self.pdu_mock.oid_mapping[(1, 1)] = Mock()
-        self.pdu_mock.oid_mapping[(1, 1)].value = OctetString('test')
+        self.power_unit_mock.oid_mapping[(1, 1)] = Mock()
+        self.power_unit_mock.oid_mapping[(1, 1)].value = OctetString('test')
 
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_GET)
+        patcher = patch('virtualpdu.pdu.pysnmp_handler'
+                        '.GetCommandResponder.sendRsp')
+        mock = patcher.start()
 
-        message = TraversableMessage(self.encoder_mock.encode.call_args[0][0])
-        varbindlist = message[PDUs][ResponsePDU][VarBindList]
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_GET
+        )
 
-        self.assertEqual(varbindlist[0][ObjectName].value, (1, 1))
-        self.assertEqual(varbindlist[0][_BindValue][ObjectSyntax]
-                         [SimpleSyntax][OctetString].value,
-                         OctetString("test"))
+        varbindlist = mock.call_args[0][4]
+
+        patcher.stop()
+
+        self.assertEqual(varbindlist[0][0], (1, 1))
+        self.assertEqual(varbindlist[0][1], OctetString("test"))
 
     def test_get_next(self):
-        self.pdu_mock.oid_mapping[(1, 1)] = Mock()
-        self.pdu_mock.oid_mapping[(1, 2)] = Mock()
-        self.pdu_mock.oid_mapping[(1, 2)].value = Integer(5)
+        self.power_unit_mock.oid_mapping[(1, 1)] = Mock()
+        self.power_unit_mock.oid_mapping[(1, 2)] = Mock()
+        self.power_unit_mock.oid_mapping[(1, 2)].value = Integer(5)
 
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_WALK)
+        patcher = patch('virtualpdu.pdu.pysnmp_handler'
+                        '.NextCommandResponder.sendRsp')
+        mock = patcher.start()
 
-        message = TraversableMessage(self.encoder_mock.encode.call_args[0][0])
-        varbindlist = message[PDUs][ResponsePDU][VarBindList]
-        self.assertEqual(varbindlist[0][ObjectName].value, (1, 2))
-        self.assertEqual(varbindlist[0][_BindValue][ObjectSyntax]
-                         [SimpleSyntax][Integer].value,
-                         Integer(5))
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_WALK
+        )
 
-    def test_unsupported_command_returns_genError(self):
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_BULK_GET)
+        varbindlist = mock.call_args[0][4]
 
-        message = TraversableMessage(self.encoder_mock.encode.call_args[0][0])
+        patcher.stop()
 
-        self.assertEqual(message[PDUs][ResponsePDU].get_by_index(1).value,
-                         Integer(SNMP_ERR_genErr))
+        self.assertEqual(varbindlist[0][0], (1, 2))
+        self.assertEqual(varbindlist[0][1], Integer(5))
+
+    def test_unsupported_command_returns_error(self):
+        patcher = patch('pysnmp.proto.mpmod.rfc2576'
+                        '.SnmpV2cMessageProcessingModel'
+                        '.prepareResponseMessage')
+        mock = patcher.start()
+        mock.return_value = (
+            (1, 3, 6, 1), ('127.0.0.1', 12345), b''
+        )
+
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_BULK_GET
+        )
+
+        status_info = mock.call_args[0][11]
+        self.assertIsInstance(status_info['errorIndication'],
+                              UnknownPDUHandler)
+
+        patcher.stop()
 
     def test_doesnt_reply_with_wrong_community(self):
-        self.pdu_handler.message_handler(self.transport_dispatcher,
-                                         sentinel.transport_domain,
-                                         sentinel.transport_address,
-                                         MSG_SNMP_WRONG_COMM)
+        patcher = patch('pysnmp.proto.mpmod.rfc2576'
+                        '.SnmpV2cMessageProcessingModel'
+                        '.prepareResponseMessage')
+        mock = patcher.start()
+        mock.return_value = (
+            (1, 3, 6, 1), ('127.0.0.1', 12345), b''
+        )
 
-        self.assertFalse(self.transport_dispatcher.sendMessage.called)
+        self.snmp_engine.msgAndPduDsp.receiveMessage(
+            self.snmp_engine, (1, 3, 6, 1), ('127.0.0.1', 12345),
+            MSG_SNMP_WRONG_COMM
+        )
+
+        self.assertEqual(mock.call_count, 0)
+
+        patcher.stop()
