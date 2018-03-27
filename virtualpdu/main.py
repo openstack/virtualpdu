@@ -36,34 +36,78 @@ def main():
         sys.stderr.write(MISSING_CONFIG_MESSAGE)
         return 1
     else:
-        config = configparser.RawConfigParser({'debug_snmp': 'no'})
+        config = configparser.RawConfigParser(
+            {'debug_snmp': 'no',
+             'snmp_versions': '1,2c',
+             # SNMPv2c
+             'community': None,
+             # SNMPv3
+             'engine_id': None,
+             'context_engine_id': None,
+             'context_name': '',
+             'user': None,
+             'auth_key': None,
+             'auth_protocol': None,
+             'priv_key': None,
+             'priv_protocol': None}
+        )
+
         config.read(config_file)
         driver = get_driver_from_config(config)
         mapping = get_mapping_for_config(config)
         outlet_default_state = get_default_state_from_config(config)
+
         debug_snmp = config.get('global', 'debug_snmp')
 
         core = virtualpdu.core.Core(driver=driver, mapping=mapping, store={},
                                     default_state=outlet_default_state)
 
         pdu_threads = []
+
         for pdu in [s for s in config.sections() if s != 'global']:
-
-            listen_address = config.get(pdu, 'listen_address')
-            port = int(config.get(pdu, 'listen_port'))
-            community = config.get(pdu, 'community')
-
             apc_pdu = apc_rackpdu.APCRackPDU(pdu, core)
 
-            pdu_threads.append(
-                pysnmp_handler.SNMPPDUHarness(
-                    apc_pdu,
-                    listen_address,
-                    port,
-                    community,
-                    debug_snmp=debug_snmp in ('yes', 'true', '1')
-                )
+            listen_address = config.get(pdu, 'listen_address')
+            listen_port = int(config.get(pdu, 'listen_port'))
+
+            snmp_versions = config.get(pdu, 'snmp_versions')
+            snmp_versions = [x.strip() for x in snmp_versions.split(',')]
+
+            # SNMPv1/v2c options
+            community = config.get(pdu, 'community')
+
+            # SNMPv3 options
+            engine_id = config.get(pdu, 'engine_id')
+            if engine_id and engine_id.startswith('0x'):
+                engine_id = engine_id[2:]
+            context_engine_id = config.get(pdu, 'context_engine_id')
+            if context_engine_id and context_engine_id.startswith('0x'):
+                context_engine_id = context_engine_id[2:]
+            context_name = config.get(pdu, 'context_name')
+            user = config.get(pdu, 'user')
+            auth_key = config.get(pdu, 'auth_key')
+            auth_protocol = config.get(pdu, 'auth_protocol')
+            priv_key = config.get(pdu, 'priv_key')
+            priv_protocol = config.get(pdu, 'priv_protocol')
+
+            snmp_harness = pysnmp_handler.SNMPPDUHarness(
+                apc_pdu,
+                listen_address,
+                listen_port,
+                snmp_versions=snmp_versions,
+                community=community,
+                engine_id=engine_id,
+                context_engine_id=context_engine_id,
+                context_name=context_name,
+                user=user,
+                auth_key=auth_key,
+                auth_protocol=auth_protocol,
+                priv_key=priv_key,
+                priv_protocol=priv_protocol,
+                debug_snmp=debug_snmp in ('yes', 'true', '1')
             )
+
+            pdu_threads.append(snmp_harness)
 
         for t in pdu_threads:
             t.start()

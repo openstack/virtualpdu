@@ -32,6 +32,7 @@ class TestSNMPPDUHarness(base.TestCase):
         harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
+                                                snmp_versions=['1', '2c'],
                                                 community='bleh')
 
         harness.start()
@@ -58,6 +59,7 @@ class TestSNMPPDUHarness(base.TestCase):
         harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
+                                                snmp_versions=['1', '2c'],
                                                 community='bleh')
 
         harness.start()
@@ -85,6 +87,7 @@ class TestSNMPPDUHarness(base.TestCase):
         harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
+                                                snmp_versions=['1', '2c'],
                                                 community='bleh')
 
         harness.start()
@@ -113,6 +116,7 @@ class TestSNMPPDUHarness(base.TestCase):
         harness = pysnmp_handler.SNMPPDUHarness(power_unit=mock_power_unit,
                                                 listen_address='127.0.0.1',
                                                 listen_port=port,
+                                                snmp_versions=['1', '2c'],
                                                 community='bleh')
 
         harness.start()
@@ -120,3 +124,108 @@ class TestSNMPPDUHarness(base.TestCase):
         harness.join(timeout=5)
 
         self.assertFalse(harness.isAlive())
+
+
+class TestSNMPv3Operations(base.TestCase):
+
+    def setUp(self):
+        super(TestSNMPv3Operations, self).setUp()
+
+        self.mock_power_unit = mock.Mock()
+        self.mock_power_unit.oid_mapping = dict()
+        oid = (1, 3, 6, 99)
+        self.mock_power_unit.oid_mapping[oid] = mock.Mock()
+        self.mock_power_unit.oid_mapping[oid].value = univ.Integer(42)
+
+    def test_harness_none_none(self):
+
+        port = randint(20000, 30000)
+
+        harness = pysnmp_handler.SNMPPDUHarness(
+            power_unit=self.mock_power_unit,
+            listen_address='127.0.0.1',
+            listen_port=port,
+            snmp_versions=['3'],
+            user='openstack'
+        )
+
+        harness.start()
+
+        client = snmp_client.SnmpClient(
+            oneliner_cmdgen=cmdgen,
+            host='127.0.0.1',
+            port=port,
+            user='openstack',
+            timeout=1,
+            retries=1
+        )
+
+        self.assertEqual(42, client.get_one((1, 3, 6, 99)))
+
+        harness.stop()
+
+    def test_harness_md5_none(self):
+
+        port = randint(20000, 30000)
+
+        harness = pysnmp_handler.SNMPPDUHarness(
+            power_unit=self.mock_power_unit,
+            snmp_versions=['3'],
+            listen_address='127.0.0.1',
+            listen_port=port,
+            user='openstack',
+            auth_key='secretkey',
+            auth_protocol='MD5'
+        )
+
+        harness.start()
+
+        client = snmp_client.SnmpClient(
+            oneliner_cmdgen=cmdgen,
+            host='127.0.0.1',
+            port=port,
+            user='openstack',
+            auth_key='secretkey',
+            auth_protocol='MD5',
+            timeout=1,
+            retries=1
+        )
+
+        self.assertEqual(42, client.get_one((1, 3, 6, 99)))
+
+        harness.stop()
+
+    def test_harness_md5_des(self):
+
+        port = randint(20000, 30000)
+
+        harness = pysnmp_handler.SNMPPDUHarness(
+            power_unit=self.mock_power_unit,
+            listen_address='127.0.0.1',
+            listen_port=port,
+            snmp_versions=['3'],
+            user='openstack',
+            auth_key='secretkey',
+            auth_protocol='MD5',
+            priv_key='secretkey',
+            priv_protocol='DES'
+        )
+
+        harness.start()
+
+        client = snmp_client.SnmpClient(
+            oneliner_cmdgen=cmdgen,
+            host='127.0.0.1',
+            port=port,
+            user='openstack',
+            auth_key='secretkey',
+            auth_protocol='MD5',
+            priv_key='secretkey',
+            priv_protocol='DES',
+            timeout=1,
+            retries=1
+        )
+
+        self.assertEqual(42, client.get_one((1, 3, 6, 99)))
+
+        harness.stop()

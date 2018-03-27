@@ -47,16 +47,16 @@ class TestCoreIntegration(base.TestCase):
         port = random.randint(20000, 30000)
         community = 'public'
 
-        self.pdu_test_harness = pysnmp_handler.SNMPPDUHarness(pdu_,
-                                                              listen_address,
-                                                              port,
-                                                              community)
+        self.pdu_test_harness = pysnmp_handler.SNMPPDUHarness(
+            pdu_, listen_address, port,
+            snmp_versions=['1', '2c'], community=community
+        )
         self.pdu_test_harness.start()
 
         return snmp_client.SnmpClient(cmdgen,
                                       listen_address,
                                       port,
-                                      community,
+                                      community=community,
                                       timeout=1,
                                       retries=1)
 

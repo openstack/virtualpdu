@@ -34,7 +34,8 @@ class PDUTestCase(base.TestCase):
             self.pdu,
             '127.0.0.1',
             random.randint(20000, 30000),
-            self.community)
+            snmp_versions=['1', '2c'],
+            community=self.community)
         self.pdu_test_harness.start()
 
     def tearDown(self):
@@ -45,7 +46,7 @@ class PDUTestCase(base.TestCase):
         s = snmp_client.SnmpClient(cmdgen,
                                    self.pdu_test_harness.listen_address,
                                    self.pdu_test_harness.listen_port,
-                                   community or self.community,
+                                   community=community or self.community,
                                    timeout=1,
                                    retries=1)
         return s.get_one(oid)
@@ -54,7 +55,7 @@ class PDUTestCase(base.TestCase):
         s = snmp_client.SnmpClient(cmdgen,
                                    self.pdu_test_harness.listen_address,
                                    self.pdu_test_harness.listen_port,
-                                   community or self.community,
+                                   community=community or self.community,
                                    timeout=1,
                                    retries=1)
         return s.get_next(oid)
@@ -63,7 +64,7 @@ class PDUTestCase(base.TestCase):
         s = snmp_client.SnmpClient(cmdgen,
                                    self.pdu_test_harness.listen_address,
                                    self.pdu_test_harness.listen_port,
-                                   community or self.community,
+                                   community=community or self.community,
                                    timeout=1,
                                    retries=1)
 

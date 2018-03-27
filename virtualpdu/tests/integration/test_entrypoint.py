@@ -32,12 +32,14 @@ libvirt_uri=test:///default
 [my_pdu]
 listen_address=127.0.0.1
 listen_port=9998
+snmp_versions=1
 community=public
 ports=5:test
 
 [my_second_pdu]
 listen_address=127.0.0.1
 listen_port=9997
+snmp_versions=1
 community=public
 ports=2:test
 """
@@ -161,7 +163,7 @@ def _turn_off_outlet(community, listen_address, outlet, port):
     snmp_client_ = snmp_client.SnmpClient(cmdgen,
                                           listen_address,
                                           port,
-                                          community,
+                                          community=community,
                                           timeout=1,
                                           retries=1)
 

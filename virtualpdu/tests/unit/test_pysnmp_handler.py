@@ -82,7 +82,8 @@ class SnmpServiceMessageReceivedTest(unittest.TestCase):
 
         self.snmp_engine = create_snmp_engine(self.power_unit_mock,
                                               '127.0.0.1', 161,
-                                              'community')
+                                              snmp_versions=['1', '2c'],
+                                              community='community')
 
     def tearDown(self):
         self.snmp_engine.transportDispatcher.closeDispatcher()

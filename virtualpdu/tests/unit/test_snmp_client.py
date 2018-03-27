@@ -80,11 +80,11 @@ class TestSnmpClient(base.TestCase):
                                 timeout=sentinel.timeout,
                                 retries=sentinel.retries)
         self.oneliner_cmdgen.CommunityData\
-            .assert_called_with(sentinel.community)
+            .assert_called_with(sentinel.community, mpModel=0)
         self.command_generator_mock.getCmd.assert_called_with(
             sentinel.community_data,
             sentinel.udp_transport_target,
-            oid
+            oid, contextEngineId=None, contextName=''
         )
 
     def test_get_with_all_possible_error_indications(self):
@@ -111,11 +111,12 @@ class TestSnmpClient(base.TestCase):
                                 timeout=sentinel.timeout,
                                 retries=sentinel.retries)
         self.oneliner_cmdgen.CommunityData\
-            .assert_called_with(sentinel.community)
+            .assert_called_with(sentinel.community, mpModel=0)
         self.command_generator_mock.setCmd.assert_called_with(
             sentinel.community_data,
             sentinel.udp_transport_target,
-            (oid, '43 thousands')
+            (oid, '43 thousands'),
+            contextEngineId=None, contextName=''
         )
 
     def test_set_no_such_instance(self):
@@ -132,12 +133,13 @@ class TestSnmpClient(base.TestCase):
                                 retries=sentinel.retries)
 
         self.oneliner_cmdgen.CommunityData \
-            .assert_called_with(sentinel.community)
+            .assert_called_with(sentinel.community, mpModel=0)
 
         self.command_generator_mock.setCmd.assert_called_with(
             sentinel.community_data,
             sentinel.udp_transport_target,
-            (oid, '43 thousands')
+            (oid, '43 thousands'),
+            contextEngineId=None, contextName=''
         )
 
     def test_set_with_all_possible_error_indications(self):
