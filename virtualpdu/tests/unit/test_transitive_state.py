@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import threading
+from unittest import mock
 
-from mock import mock
 from virtualpdu import core
 from virtualpdu import drivers
 from virtualpdu.tests import base

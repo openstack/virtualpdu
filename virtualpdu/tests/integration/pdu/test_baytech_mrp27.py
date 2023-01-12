@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from virtualpdu import core
 from virtualpdu.pdu.baytech_mrp27 import BaytechMRP27PDU
 from virtualpdu.pdu.baytech_mrp27 import BaytechMRP27PDUOutletControl
-
 from virtualpdu.tests.integration.pdu import PDUTestCase
 
 

@@ -213,8 +213,8 @@ def create_snmp_engine(power_unit,
             priv_protocol, priv_key
         )
 
-        if (auth_protocol != config.usmNoAuthProtocol and
-                priv_protocol != config.usmNoPrivProtocol):
+        if (auth_protocol != config.usmNoAuthProtocol
+                and priv_protocol != config.usmNoPrivProtocol):
             sec_level = 'authPriv'
         elif priv_protocol != config.usmNoAuthProtocol:
             sec_level = 'authNoPriv'

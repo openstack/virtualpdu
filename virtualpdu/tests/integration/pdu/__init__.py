@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import mock
-from pysnmp.entity.rfc3413.oneliner import cmdgen
 import random
+from unittest import mock
+
+from pysnmp.entity.rfc3413.oneliner import cmdgen
 
 from virtualpdu.pdu import pysnmp_handler
 from virtualpdu.tests import base

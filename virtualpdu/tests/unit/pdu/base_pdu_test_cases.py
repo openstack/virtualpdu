@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from cached_property import cached_property
-from mock import mock
+
+import functools
+from unittest import mock
+
 from virtualpdu import core
 
 
@@ -20,11 +22,11 @@ class BasePDUTests(object):
     pdu_class = None
     outlet_control_oid = None
 
-    @cached_property
+    @functools.cached_property
     def core_mock(self):
         return mock.Mock()
 
-    @cached_property
+    @functools.cached_property
     def pdu(self):
         return self.pdu_class(name='my_pdu', core=self.core_mock)
 

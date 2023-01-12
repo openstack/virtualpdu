@@ -16,6 +16,7 @@ import random
 import time
 
 from pysnmp.entity.rfc3413.oneliner import cmdgen
+
 from virtualpdu import core
 from virtualpdu import drivers
 from virtualpdu.drivers import libvirt_driver

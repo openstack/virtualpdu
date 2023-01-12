@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from pyasn1.type import univ
+
 from virtualpdu.pdu import baytech_mrp27
 from virtualpdu.pdu import sysDescr
 from virtualpdu.pdu import sysObjectID

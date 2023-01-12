@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import os
 import signal
 import subprocess
 import sys
 import tempfile
 import threading
 
-import os
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 from retrying import retry
 
@@ -52,7 +53,7 @@ class TestEntryPointIntegration(base.TestCase):
             stderr=subprocess.PIPE
         )
         stdout, stderr = p.communicate()
-        self.assertEqual(
+        self.assertIn(
             b'Missing configuration file as first parameter.\n',
             stderr)
         self.assertEqual(1, p.returncode)

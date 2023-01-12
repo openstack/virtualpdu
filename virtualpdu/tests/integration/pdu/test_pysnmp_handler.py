@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
+from random import randint
+from unittest import mock
+
 from pyasn1.type import univ
 from pysnmp.entity.rfc3413.oneliner import cmdgen
-from random import randint
+
 from virtualpdu.pdu import pysnmp_handler
 from virtualpdu.tests import base
 from virtualpdu.tests import snmp_client
@@ -123,7 +125,7 @@ class TestSNMPPDUHarness(base.TestCase):
         harness.stop()
         harness.join(timeout=5)
 
-        self.assertFalse(harness.isAlive())
+        self.assertFalse(harness.is_alive())
 
 
 class TestSNMPv3Operations(base.TestCase):

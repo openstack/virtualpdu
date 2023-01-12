@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from virtualpdu import core
 from virtualpdu.pdu.apc_rackpdu import APCRackPDU
 from virtualpdu.pdu.apc_rackpdu import APCRackPDUOutletControl
-
 from virtualpdu.tests.integration.pdu import PDUTestCase
 
 

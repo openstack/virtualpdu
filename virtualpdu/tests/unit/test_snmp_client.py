@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import mock
-from mock import sentinel
+from unittest import mock
+from unittest.mock import sentinel
+
 from pysnmp.proto import errind
 from pysnmp.proto.errind import ErrorIndication
 from pysnmp.proto.rfc1905 import NoSuchInstance
-
 import testtools
 
 from virtualpdu.tests import base

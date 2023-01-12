@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-
-from mock import Mock
-from mock import patch
+# note(rpittau): related to F811, see tox.ini
+# from unittest import mock
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from pysnmp.proto.errind import UnknownPDUHandler
 from pysnmp.proto.rfc1902 import Integer
@@ -23,7 +24,6 @@ from pysnmp.proto.rfc1902 import ObjectName
 from pysnmp.proto.rfc1902 import ObjectSyntax
 from pysnmp.proto.rfc1902 import OctetString
 from pysnmp.proto.rfc1902 import SimpleSyntax
-
 from pysnmp.proto.rfc1905 import _BindValue
 from pysnmp.proto.rfc1905 import NoSuchInstance
 from pysnmp.proto.rfc1905 import VarBindList

@@ -2,8 +2,6 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-pbr>=1.6 # Apache-2.0
-libvirt-python>=1.2.5 # LGPLv2+
-pyasn1 # BSD
-pysnmp<5.0.0,>=4.2.3 # BSD
-futures==3.0.5 # BSD
+libvirt-python>=6.0.0 # LGPLv2+
+pyasn1>=0.4.8 # BSD
+pysnmp>=4.2.3 # BSD

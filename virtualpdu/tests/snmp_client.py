@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pysnmp.proto.api import v2c
+
 from virtualpdu.pdu.pysnmp_handler import auth_protocols
 from virtualpdu.pdu.pysnmp_handler import priv_protocols
 from virtualpdu.tests import snmp_error_indications
-
-from pysnmp.proto.api import v2c
 
 
 class SnmpClient(object):

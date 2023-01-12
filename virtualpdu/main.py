@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import logging
+import sys
 
 try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
-
-import sys
 
 import virtualpdu.core
 from virtualpdu.drivers import libvirt_driver
@@ -114,7 +114,7 @@ def main():
 
         try:
             for t in pdu_threads:
-                while t.isAlive():
+                while t.is_alive():
                     t.join(1)
 
         except KeyboardInterrupt:

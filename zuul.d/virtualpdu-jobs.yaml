@@ -1,0 +1,15 @@
+- job:
+    name: ironic-tempest-wholedisk-bios-snmp-pxe-virtualpdu-src
+    description: SNMP power, no-op management and whole disk images.
+    parent: ironic-base
+    required-projects:
+      - x/virtualpdu
+    vars:
+      devstack_localrc:
+        IRONIC_ENABLED_HARDWARE_TYPES: snmp
+        IRONIC_DEPLOY_DRIVER: snmp
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_AUTOMATED_CLEAN_ENABLED: False
+        IRONIC_ENFORCE_SCOPE: True
+        IRONIC_BOOT_MODE: bios

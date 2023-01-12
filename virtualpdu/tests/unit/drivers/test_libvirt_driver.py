@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 import libvirt
-from mock import mock
 
 from virtualpdu import drivers
 from virtualpdu.drivers import libvirt_driver
@@ -117,8 +118,7 @@ class TestLibvirtDriver(base.TestCase):
     def test_get_power_state_domain_not_found(self, mock_open):
         connection_mock = mock.Mock()
         connection_mock.lookupByName.side_effect = \
-            libvirt.libvirtError('virDomainLookupByName() failed',
-                                 conn=connection_mock)
+            libvirt.libvirtError('virDomainLookupByName() failed')
         mock_open.return_value = connection_mock
 
         self.assertRaises(drivers.DeviceNotFound,
@@ -129,8 +129,7 @@ class TestLibvirtDriver(base.TestCase):
     def test_power_on_domain_not_found(self, mock_open):
         connection_mock = mock.Mock()
         connection_mock.lookupByName.side_effect = \
-            libvirt.libvirtError('virDomainLookupByName() failed',
-                                 conn=connection_mock)
+            libvirt.libvirtError('virDomainLookupByName() failed')
         mock_open.return_value = connection_mock
 
         self.assertRaises(drivers.DeviceNotFound,
@@ -141,8 +140,7 @@ class TestLibvirtDriver(base.TestCase):
     def test_power_off_domain_not_found(self, mock_open):
         connection_mock = mock.Mock()
         connection_mock.lookupByName.side_effect = \
-            libvirt.libvirtError('virDomainLookupByName() failed',
-                                 conn=connection_mock)
+            libvirt.libvirtError('virDomainLookupByName() failed')
         mock_open.return_value = connection_mock
 
         self.assertRaises(drivers.DeviceNotFound,
