@@ -3,5 +3,6 @@
 # process, which may cause wedges in the gate later.
 
 libvirt-python>=6.0.0 # LGPLv2+
-pyasn1>=0.4.8 # BSD
-pysnmp>=4.2.3 # BSD
+pysnmp-lextudio>=5.0.0 # BSD
+pyasn1-lextudio>=1.1.0 # BSD
+pyasn1-modules-lextudio>=0.2.0 # BSD
