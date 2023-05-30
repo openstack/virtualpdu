@@ -3,7 +3,7 @@
     description: SNMP power, no-op management and whole disk images.
     parent: ironic-base
     required-projects:
-      - x/virtualpdu
+      - openstack/virtualpdu
     vars:
       devstack_localrc:
         IRONIC_ENABLED_HARDWARE_TYPES: snmp
