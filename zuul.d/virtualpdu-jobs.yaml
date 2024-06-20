@@ -1,7 +1,7 @@
 - job:
     name: ironic-tempest-wholedisk-bios-snmp-pxe-virtualpdu-src
     description: SNMP power, no-op management and whole disk images.
-    parent: ironic-base
+    parent: ironic-tempest-ramdisk-bios-snmp-pxe
     required-projects:
       - openstack/virtualpdu
     vars:
